@@ -21,7 +21,7 @@ library(tidyverse)
 library(readxl)
 library(readr)
 ```
-```
+
 
 ```{r}
 ###Select chicovidrawdataset.csv from files and click "import dataset". This is the code preview for it.
@@ -64,4 +64,94 @@ df_chicovidclean %>% glimpse
     zip_code == "N/A" | zip_code == "Unknown", NA, zip_code))
     
 view(df_chicovidcleanzip)
+```
+
+```{r}
+###Checking to see if any columns are missing significant data. None are. Good to move forward.
+columns_missing_most_data <- df_chicovidcleanzip %>%
+  summarise(across(everything(), ~ skimr::n_missing(.x))) %>%
+  pivot_longer(cols = everything(),
+               names_to = "variable",
+               values_to = "missing_count") %>% 
+  mutate(proportion_missing = round(missing_count / nrow(df_chicovidcleanzip), 2)) %>% 
+  arrange(desc(missing_count)) %>% 
+
+  filter(proportion_missing > .3) %>% 
+  pull(variable)
+
+print(message("Columns missing 50%+ data:"))
+columns_missing_most_data
+
+```
+
+```{r}
+###Removing zip_code_location as it is not needed (long. & lat coordinates). Glimpse to doublecheck it. Renamed to our final df. This is completeing data cleaning/wrangling.
+
+df_chicovidfinal <- df_chicovidcleanzip %>% 
+  select(-zip_code_location)
+  
+df_chicovidfinal %>% glimpse
+
+view(df_chicovidfinal)
+
+```
+
+
+###Connection/Creation of SQL Database
+
+
+```{r message=FALSE, warning=FALSE}
+install.packages(RMySQL)
+install.packages(keyring)
+install.packages(odbc)
+install.packages(remotes)
+
+library(dbplyr)
+library(dplyr)
+library(odbc)
+library(RMySQL)
+library(keyring)
+library(readr)
+```
+
+```{r eval=FALSE}
+service_mysql <- "r-mysql"
+username_mysql <- "root"
+keyring::key_set(service = service_mysql, username = username_mysql)
+```
+
+```{sql eval=FALSE}
+##Remote access is disabled by default to MySQL, but still pick a secure password with the above SQL command
+ALTER USER root@localhost IDENTIFIED WITH mysql_native_password BY 'yourpassword';
+```
+
+```{r sql-connection-mydb}
+service_mysql <- "r-mysql"
+username_mysql <- "root"
+
+con_mydb <- dbConnect(
+  # `MySQL()` comes from the RMySQL package
+  MySQL(),
+  user = key_list(service = service_mysql)$username,
+  password = key_get(service = service_mysql, key_list(service = service_mysql)$username),
+  # This is another option if keyring is not working for you
+  # password = rstudioapi::askForPassword("Database password")
+  dbname = "mydb",
+  host = "localhost"
+)
+
+con_mydb
+```
+
+```{r}
+# mydb
+dbListTables(conn = con_mydb)
+```
+
+```{r eval=FALSE}
+dbGetQuery(con_mydb, "SET GLOBAL local_infile = 1")
+```
+
+```{sql connection=con_mydb}
+show Tables
 ```
