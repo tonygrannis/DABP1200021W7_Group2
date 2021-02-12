@@ -9,11 +9,59 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
+install.packages(janitor)
+install.packages(skimr)
+install.packages(tidyverse)
+install.packages(readxl)
+install.packages(readr)
 
+library(janitor)
+library(skimr)
+library(tidyverse)
+library(readxl)
+library(readr)
+```
 ```
 
-
+```{r}
+###Select chicovidrawdataset.csv from files and click "import dataset". This is the code preview for it.
+library(readr)
+df_chicovidrawdataset <- read_csv("chicovidrawdataset.csv")
+View(chicovidrawdataset)
+```
 
 ```{r}
+###Change name to add df_ & shorten
+df_chicovidraw <- chicovidrawdataset
+```
 
+```{r}
+###View the data
+df_chicovidraw %>% glimpse
+```
+
+```{r}
+###Cleaning data w/ janitor. Renaming to Clean. Viewing the names of colums, then glimpsing to see data.
+
+df_chicovidclean <- df_chicovidraw %>% 
+  janitor::clean_names()
+
+df_chicovidclean %>% names
+
+df_chicovidclean %>% glimpse
+```
+
+```{r}
+### Finding rows that may have N/A or NA values
+ df_chicovidclean %>% 
+  filter_all(any_vars(. == "N/A" | . == "Unknown"))
+```
+
+```{r}
+###Cleaned out the "Unknown" ZIP Codes from the ZIP Code Column
+ df_chicovidcleanzip <- df_chicovidclean %>% 
+  mutate(zip_code = ifelse(
+    zip_code == "N/A" | zip_code == "Unknown", NA, zip_code))
+    
+view(df_chicovidcleanzip)
 ```
